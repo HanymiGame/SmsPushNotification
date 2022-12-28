@@ -33,6 +33,8 @@ class Fcm extends Gcm
         $headers = $this->addRequestHeaders();
         $data = $this->buildData($topic, $message, $isCondition);
 
+        $response = ['success' => false, 'error' => null, 'results' => null];
+
         try {
             $result = $this->client->post(
                 $this->url,
@@ -42,18 +44,14 @@ class Fcm extends Gcm
                 ]
             );
 
-            $json = $result->getBody();
-
-            $this->setFeedback(json_decode($json, false, 512, JSON_BIGINT_AS_STRING));
+            $response['results'] = json_decode($result->getBody(), false, 512, JSON_BIGINT_AS_STRING);
+            $response['success'] = true;
 
         } catch (\Exception $e) {
-            $response = ['success' => false, 'error' => $e->getMessage()];
-
-            $this->setFeedback(json_decode(json_encode($response)));
-
-        } finally {
-            return $this->feedback;
+            $response['error'] = $e->getMessage();
         }
+        $this->setFeedback(json_decode(json_encode($response)));
+        return $this->feedback;
     }
 
     /**

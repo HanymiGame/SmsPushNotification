@@ -76,13 +76,15 @@ class Sms extends SmsPushService implements SmsPushServiceInterface
      * @param array $deviceTokens
      * @param array $message
      *
-     * @return \stdClass  GCM Response
+     * @return \stdClass  Sms Response
      */
     public function send(array $deviceTokens, array $message)
     {
 
         $fields = $this->addRequestFields();
         $params = $this->buildMessageTo($deviceTokens, $message);
+
+        $response = ['success' => false, 'error' => null, 'results' => null];
 
         try {
             $result = $this->client->request('POST', $this->url . '?json=1&' . $fields, [
@@ -91,18 +93,12 @@ class Sms extends SmsPushService implements SmsPushServiceInterface
                 'debug' => false
             ]);
 
-            $json = $result->getBody();
-
-            $this->setFeedback(json_decode($json, false, 512, JSON_BIGINT_AS_STRING));
-
-            return $this->feedback;
-
+            $response['results'] = json_decode($result->getBody(), false, 512, JSON_BIGINT_AS_STRING);
+            $response['success'] = true;
         } catch (\Exception $e) {
-            $response = ['success' => false, 'error' => $e->getMessage()];
-
-            $this->setFeedback(json_decode(json_encode($response)));
-
-            return $this->feedback;
+            $response['error'] = $e->getMessage();
         }
+        $this->setFeedback(json_decode(json_encode($response)));
+        return $this->feedback;
     }
 }
