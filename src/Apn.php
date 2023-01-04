@@ -325,7 +325,7 @@ class Apn extends SmsPushService implements SmsPushServiceInterface
     {
         $response = [
             'success' => false,
-            'error' => "Please, add your APN certificate to the iosCertificates folder." . PHP_EOL
+            'error' => ['status' => '0', 'body' => "Please, add your APN certificate to the iosCertificates folder."]
         ];
 
         $this->setFeedback(json_decode(json_encode($response)));
