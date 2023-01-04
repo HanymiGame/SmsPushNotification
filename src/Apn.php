@@ -6,6 +6,9 @@ use Illuminate\Support\Arr;
 
 class Apn extends SmsPushService implements SmsPushServiceInterface
 {
+    /*
+     * https://developer.apple.com/documentation/usernotifications/setting_up_a_remote_notification_server/sending_notification_requests_to_apns?language=objc
+     */
     const APNS_DEVELOPMENT_SERVER = 'https://api.development.push.apple.com';
     const APNS_PRODUCTION_SERVER = 'https://api.push.apple.com';
     const APNS_PORT = 443;
@@ -87,7 +90,7 @@ class Apn extends SmsPushService implements SmsPushServiceInterface
 
         $responseCollection = [
             'success' => true,
-            'error' => '',
+            'error' => [],
             'results' => [],
         ];
 
@@ -144,17 +147,18 @@ class Apn extends SmsPushService implements SmsPushServiceInterface
                 $token = curl_getinfo($handle, CURLINFO_PRIVATE);
 
                 $responseParts = explode("\r\n\r\n", $result, 2);
-                $headers = '';
+                $headers = [];
                 $body = '';
-                if (isset($responseParts[0])) {
-                    $headers = $responseParts[0];
+                if (!empty($responseParts[0])) {
+                    $headers = $this->getResponceHeaders($responseParts[0]);
                 }
-                if (isset($responseParts[1])) {
+                if (!empty($responseParts[1])) {
                     $body = $responseParts[1];
                 }
 
                 $statusCode = curl_getinfo($handle, CURLINFO_HTTP_CODE);
-                if ($statusCode === 0) {
+                // connect errors
+                if ($statusCode === false || $statusCode === 0) {
                     $responseCollection['success'] = false;
 
                     $responseCollection['error'] = [
@@ -168,10 +172,10 @@ class Apn extends SmsPushService implements SmsPushServiceInterface
 
                 $responseCollection['success'] = $responseCollection['success'] && $statusCode == 200;
 
-                $responseCollection['results'][] = [
+                $responseCollection['results'][$token] = [
                     'status' => $statusCode,
                     'headers' => $headers,
-                    'body' => (string)$body,
+                    'body' => json_decode($body),
                     'token' => $token
                 ];
                 curl_multi_remove_handle($mh, $handle);
@@ -194,6 +198,23 @@ class Apn extends SmsPushService implements SmsPushServiceInterface
         $this->setFeedback(json_decode(json_encode($responseCollection)));
 
         return $responseCollection;
+    }
+
+    /**
+     * Get Url for APNs production server.
+     *
+     * @param $header
+     * @return array
+     */
+    private function getResponceHeaders(string $header)
+    {
+        $result = [];
+        $parts = explode("\r\n", $header);
+        foreach ($parts as $http_responce) {
+            list($code, $value) = explode(' ', $http_responce, 2);
+            $result[trim($code)] = trim($value);
+        }
+        return $result;
     }
 
     /**
@@ -331,3 +352,4 @@ class Apn extends SmsPushService implements SmsPushServiceInterface
     }
 
 }
+
